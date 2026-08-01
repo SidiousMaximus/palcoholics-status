@@ -34,7 +34,6 @@ jobs:
           import os
 
           host = os.environ['SFTP_HOST']
-          # Use port 21 or fallback to secret port if specified
           port = int(os.environ['SFTP_PORT'])
           username = os.environ['SFTP_USER']
           password = os.environ['SFTP_PASS']
@@ -43,6 +42,10 @@ jobs:
           ftp = FTP()
           ftp.connect(host, port if port != 22 else 21, timeout=15)
           ftp.login(username, password)
+          
+          # Navigate to the correct Win64 directory where the mod writes the report
+          print('Navigating to Pal/Binaries/Win64...')
+          ftp.cwd('Pal/Binaries/Win64')
           
           print('Downloading Statistik_report.html...')
           with open('index.html', 'wb') as f:
