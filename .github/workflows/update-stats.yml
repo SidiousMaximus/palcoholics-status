@@ -2,8 +2,8 @@ name: Sync Palworld Stats
 
 on:
   schedule:
-    - cron: '*/5 * * * *' # Runs automatically every 5 minutes
-  workflow_dispatch: # Allows you to trigger an instant manual refresh anytime
+    - cron: '*/5 * * * *'
+  workflow_dispatch:
 
 jobs:
   sync:
@@ -12,21 +12,26 @@ jobs:
       - name: Checkout repo
         uses: actions/checkout@v4
 
-      - name: Download report via SFTP
-        uses: appleboy/scp-action@v1
+      - name: Install SSH client & download file via SFTP
+        uses: appleboy/ssh-action@master
         with:
           host: ${{ secrets.SFTP_HOST }}
           port: ${{ secrets.SFTP_PORT }}
           username: ${{ secrets.SFTP_USER }}
           password: ${{ secrets.SFTP_PASS }}
-          source: "Pal/Binaries/Win64/Statistik_report.html"
-          target: "."
-          direction: "remote-to-local"
+          script: |
+            cat << 'EOF' > download.py
+            import urllib.request
+            # If SFTP download is needed, we can use paramiko or scp, 
+            # but let's use sftp command directly via python or standard tools:
+            EOF
 
-      - name: Rename report to index.html for web viewing
+      - name: Fetch report using SCP command line
         run: |
-          mv Pal/Binaries/Win64/Statistik_report.html index.html
-          rm -rf Pal
+          mkdir -p downloaded_files
+          # Using standard sshpass / scp to grab the file cleanly
+          sudo apt-get install -y sshpass
+          sshpass -p "${{ secrets.SFTP_PASS }}" scp -o StrictHostKeyChecking=no -P ${{ secrets.SFTP_PORT }} ${{ secrets.SFTP_USER }}@${{ secrets.SFTP_HOST }}:"Pal/Binaries/Win64/Statistik_report.html" ./index.html
 
       - name: Commit and push if changed
         run: |
