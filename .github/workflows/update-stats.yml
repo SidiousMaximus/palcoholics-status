@@ -1,0 +1,36 @@
+name: Sync Palworld Stats
+
+on:
+  schedule:
+    - cron: '*/5 * * * *' # Runs automatically every 5 minutes
+  workflow_dispatch: # Allows you to trigger an instant manual refresh anytime
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Download report via SFTP
+        uses: appleboy/scp-action@v1
+        with:
+          host: ${{ secrets.SFTP_HOST }}
+          port: ${{ secrets.SFTP_PORT }}
+          username: ${{ secrets.SFTP_USER }}
+          password: ${{ secrets.SFTP_PASS }}
+          source: "Pal/Binaries/Win64/Statistik_report.html"
+          target: "."
+          direction: "remote-to-local"
+
+      - name: Rename report to index.html for web viewing
+        run: |
+          mv Pal/Binaries/Win64/Statistik_report.html index.html
+          rm -rf Pal
+
+      - name: Commit and push if changed
+        run: |
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+          git add index.html
+          git diff --quiet && git diff --staged --quiet || (git commit -m "Auto-update Palworld stats every 5m" && git push)
