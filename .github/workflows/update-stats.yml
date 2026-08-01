@@ -55,6 +55,30 @@ jobs:
           print("Successfully downloaded and saved as index.html!")
           EOF
 
+      - name: Add Auto-Refresh and Anti-Cache to HTML
+        run: |
+          python - << 'EOF'
+          with open("index.html", "r", encoding="utf-8", errors="ignore") as f:
+              content = f.read()
+              
+          meta_tags = """
+          <meta http-equiv="refresh" content="300">
+          <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+          <meta http-equiv="Pragma" content="no-cache">
+          <meta http-equiv="Expires" content="0">
+          </head>
+          """
+          
+          if "</head>" in content:
+              content = content.replace("</head>", meta_tags)
+          else:
+              content = meta_tags + content
+              
+          with open("index.html", "w", encoding="utf-8") as f:
+              f.write(content)
+          print("Injected auto-refresh and anti-cache tags into index.html!")
+          EOF
+
       - name: Upload Pages artifact
         uses: actions/upload-pages-artifact@v3
         with:
