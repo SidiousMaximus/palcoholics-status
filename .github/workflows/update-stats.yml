@@ -22,15 +22,16 @@ jobs:
         with:
           python-version: '3.10'
 
-      - name: Download report via FTP (Smart Path Detection)
+      - name: Download report via SFTP
         env:
           SFTP_HOST: ${{ secrets.SFTP_HOST }}
           SFTP_PORT: ${{ secrets.SFTP_PORT }}
           SFTP_USER: ${{ secrets.SFTP_USER }}
           SFTP_PASS: ${{ secrets.SFTP_PASS }}
         run: |
-          python -c "
-          from ftplib import FTP
+          pip install -q paramiko
+          python - << 'EOF'
+          import paramiko
           import os
 
           host = os.environ['SFTP_HOST']
@@ -38,41 +39,18 @@ jobs:
           username = os.environ['SFTP_USER']
           password = os.environ['SFTP_PASS']
 
-          print(f'Connecting via FTP to {host}:{port}...')
-          ftp = FTP()
-          ftp.connect(host, port if port != 22 else 21, timeout=15)
-          ftp.login(username, password)
-          
-          # Try changing into directories if they exist, or check root
-          paths_to_try = ['', 'Pal/Binaries/Win64', 'Binaries/Win64', 'saved/']
-          success = False
+          print(f"Connecting via SFTP to {host}:{port}...")
+          transport = paramiko.Transport((host, port))
+          transport.connect(username=username, password=password)
+          sftp = paramiko.SFTPClient.from_transport(transport)
 
-          for path in paths_to_try:
-              try:
-                  if path:
-                      print(f'Trying directory: {path}')
-                      ftp.cwd(path)
-                  else:
-                      print('Checking current root directory...')
-                  
-                  print('Downloading Statistik_report.html...')
-                  with open('index.html', 'wb') as f:
-                      ftp.retrbinary('RETR Statistik_report.html', f.write)
-                  success = True
-                  print('Successfully downloaded and saved as index.html!')
-                  break
-              except Exception as e:
-                  print(f'Failed in path \"{path}\\": {e}')
-                  # Reset back to root if path change failed
-                  try:
-                      ftp.cwd('/')
-                  except:
-                      pass
+          print("Downloading Statistik_report.html from server root...")
+          sftp.get('Statistik_report.html', 'index.html')
 
-          ftp.quit()
-          if not success:
-              raise Exception('Could not find Statistik_report.html in any expected path!')
-          "
+          sftp.close()
+          transport.close()
+          print("Successfully downloaded and saved as index.html!")
+          EOF
 
       - name: Upload Pages artifact
         uses: actions/upload-pages-artifact@v3
