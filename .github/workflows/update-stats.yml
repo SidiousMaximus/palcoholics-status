@@ -22,7 +22,7 @@ jobs:
         with:
           python-version: '3.10'
 
-      - name: Download report via FTP
+      - name: Download report via FTP (Smart Path Detection)
         env:
           SFTP_HOST: ${{ secrets.SFTP_HOST }}
           SFTP_PORT: ${{ secrets.SFTP_PORT }}
@@ -43,16 +43,35 @@ jobs:
           ftp.connect(host, port if port != 22 else 21, timeout=15)
           ftp.login(username, password)
           
-          # Navigate to the correct Win64 directory where the mod writes the report
-          print('Navigating to Pal/Binaries/Win64...')
-          ftp.cwd('Pal/Binaries/Win64')
-          
-          print('Downloading Statistik_report.html...')
-          with open('index.html', 'wb') as f:
-              ftp.retrbinary('RETR Statistik_report.html', f.write)
-          
+          # Try changing into directories if they exist, or check root
+          paths_to_try = ['', 'Pal/Binaries/Win64', 'Binaries/Win64', 'saved/']
+          success = False
+
+          for path in paths_to_try:
+              try:
+                  if path:
+                      print(f'Trying directory: {path}')
+                      ftp.cwd(path)
+                  else:
+                      print('Checking current root directory...')
+                  
+                  print('Downloading Statistik_report.html...')
+                  with open('index.html', 'wb') as f:
+                      ftp.retrbinary('RETR Statistik_report.html', f.write)
+                  success = True
+                  print('Successfully downloaded and saved as index.html!')
+                  break
+              except Exception as e:
+                  print(f'Failed in path \"{path}\\": {e}')
+                  # Reset back to root if path change failed
+                  try:
+                      ftp.cwd('/')
+                  except:
+                      pass
+
           ftp.quit()
-          print('Successfully downloaded and saved as index.html!')
+          if not success:
+              raise Exception('Could not find Statistik_report.html in any expected path!')
           "
 
       - name: Upload Pages artifact
