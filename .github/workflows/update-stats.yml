@@ -12,10 +12,10 @@ jobs:
       - name: Checkout repo
         uses: actions/checkout@v4
 
-      - name: Fetch report via SCP command line
+      - name: Fetch report via SCP
         run: |
           sudo apt-get update && sudo apt-get install -y sshpass
-          sshpass -p "${{ secrets.SFTP_PASS }}" scp -o StrictHostKeyChecking=no -P ${{ secrets.SFTP_PORT }} ${{ secrets.SFTP_USER }}@${{ secrets.SFTP_HOST }}:"Pal/Binaries/Win64/Statistik_report.html" ./index.html
+          sshpass -p "${{ secrets.SFTP_PASS }}" scp -o StrictHostKeyChecking=no -P ${{ secrets.SFTP_PORT }} ${{ secrets.SFTP_USER }}@${{ secrets.SFTP_HOST }}:"Statistik_report.html" ./index.html
 
       - name: Commit and push if changed
         run: |
