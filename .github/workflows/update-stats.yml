@@ -22,7 +22,7 @@ jobs:
         with:
           python-version: '3.10'
 
-      - name: Download report via FTP (Auto-locate)
+      - name: Download report via FTP
         env:
           SFTP_HOST: ${{ secrets.SFTP_HOST }}
           SFTP_PORT: ${{ secrets.SFTP_PORT }}
@@ -40,46 +40,18 @@ jobs:
 
           print(f"Connecting via FTP to {host}...")
           ftp = FTP()
-          # DatHost uses port 21 for standard FTP control connections
           ftp.connect(host, 21 if port == 22 or port == 2022 else port, timeout=20)
           ftp.login(username, password)
           print("FTP Login successful!")
 
-          # Search for the report file in current directory and subdirectories if needed
-          target_file = "Statistik_report.html"
-          found = False
-
-          files = ftp.nlst()
-          print(f"Files in root: {files}")
-
-          if target_file in files:
-              print(f"Found {target_file} in root directory.")
-              with open("index.html", "wb") as f:
-                  ftp.retrbinary(f"RETR {target_file}", f.write)
-              found = True
-          else:
-              # Check common subdirectories recursively if not found in root
-              for folder in files:
-                  try:
-                      ftp.cwd(folder)
-                      sub_files = ftp.nlst()
-                      if target_file in sub_files:
-                          print(f"Found {target_file} inside subdirectory: {folder}")
-                          with open("index.html", "wb") as f:
-                              ftp.retrbinary(f"RETR {target_file}", f.write)
-                          found = True
-                          break
-                      ftp.cwd("..")
-                  except Exception:
-                      try:
-                          ftp.cwd("..")
-                      except:
-                          pass
+          # The mod outputs to Pal/Binaries/Win64 (relative to server root / Pal folder)
+          target_path = "Binaries/Win64/Statistik_report.html"
+          
+          print(f"Downloading {target_path}...")
+          with open("index.html", "wb") as f:
+              ftp.retrbinary(f"RETR {target_path}", f.write)
 
           ftp.quit()
-
-          if not found:
-              raise Exception("Could not automatically locate Statistik_report.html on the FTP server.")
           print("Successfully downloaded and saved as index.html!")
           EOF
 
