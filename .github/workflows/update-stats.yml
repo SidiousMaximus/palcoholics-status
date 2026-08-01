@@ -12,25 +12,10 @@ jobs:
       - name: Checkout repo
         uses: actions/checkout@v4
 
-      - name: Install SSH client & download file via SFTP
-        uses: appleboy/ssh-action@master
-        with:
-          host: ${{ secrets.SFTP_HOST }}
-          port: ${{ secrets.SFTP_PORT }}
-          username: ${{ secrets.SFTP_USER }}
-          password: ${{ secrets.SFTP_PASS }}
-          script: |
-            cat << 'EOF' > download.py
-            import urllib.request
-            # If SFTP download is needed, we can use paramiko or scp, 
-            # but let's use sftp command directly via python or standard tools:
-            EOF
-
-      - name: Fetch report using SCP command line
+      - name: Fetch report via SCP command line
         run: |
-          mkdir -p downloaded_files
-          # Using standard sshpass / scp to grab the file cleanly
-          sudo apt-get install -y sshpass
+          sudo apt-get update && sudo apt-get install -y sshpass
+          # Using absolute path handling or explicit Windows server relative layout for UE4SS output
           sshpass -p "${{ secrets.SFTP_PASS }}" scp -o StrictHostKeyChecking=no -P ${{ secrets.SFTP_PORT }} ${{ secrets.SFTP_USER }}@${{ secrets.SFTP_HOST }}:"Pal/Binaries/Win64/Statistik_report.html" ./index.html
 
       - name: Commit and push if changed
