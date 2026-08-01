@@ -22,33 +22,33 @@ jobs:
         with:
           python-version: '3.10'
 
-      - name: Install dependencies & download report
+      - name: Download report via FTP
         env:
           SFTP_HOST: ${{ secrets.SFTP_HOST }}
           SFTP_PORT: ${{ secrets.SFTP_PORT }}
           SFTP_USER: ${{ secrets.SFTP_USER }}
           SFTP_PASS: ${{ secrets.SFTP_PASS }}
         run: |
-          pip install -q paramiko
           python -c "
-          import paramiko
+          from ftplib import FTP
           import os
 
           host = os.environ['SFTP_HOST']
+          # Use port 21 or fallback to secret port if specified
           port = int(os.environ['SFTP_PORT'])
           username = os.environ['SFTP_USER']
           password = os.environ['SFTP_PASS']
 
-          print(f'Connecting to {host}:{port}...')
-          transport = paramiko.Transport((host, port))
-          transport.connect(username=username, password=password)
+          print(f'Connecting via FTP to {host}:{port}...')
+          ftp = FTP()
+          ftp.connect(host, port if port != 22 else 21, timeout=15)
+          ftp.login(username, password)
           
-          sftp = paramiko.SFTPClient.from_transport(transport)
           print('Downloading Statistik_report.html...')
-          sftp.get('Statistik_report.html', 'index.html')
+          with open('index.html', 'wb') as f:
+              ftp.retrbinary('RETR Statistik_report.html', f.write)
           
-          sftp.close()
-          transport.close()
+          ftp.quit()
           print('Successfully downloaded and saved as index.html!')
           "
 
