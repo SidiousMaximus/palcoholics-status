@@ -15,7 +15,6 @@ jobs:
       - name: Fetch report via SCP command line
         run: |
           sudo apt-get update && sudo apt-get install -y sshpass
-          # Using absolute path handling or explicit Windows server relative layout for UE4SS output
           sshpass -p "${{ secrets.SFTP_PASS }}" scp -o StrictHostKeyChecking=no -P ${{ secrets.SFTP_PORT }} ${{ secrets.SFTP_USER }}@${{ secrets.SFTP_HOST }}:"Pal/Binaries/Win64/Statistik_report.html" ./index.html
 
       - name: Commit and push if changed
