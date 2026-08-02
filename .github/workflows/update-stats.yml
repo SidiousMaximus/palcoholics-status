@@ -22,7 +22,7 @@ jobs:
         with:
           python-version: '3.10'
 
-      - name: Download report via FTP
+      - name: Download report and JSON via FTP with Fallback
         env:
           SFTP_HOST: ${{ secrets.SFTP_HOST }}
           SFTP_PORT: ${{ secrets.SFTP_PORT }}
@@ -38,45 +38,63 @@ jobs:
           username = os.environ['SFTP_USER']
           password = os.environ['SFTP_PASS']
 
-          print(f"Connecting via FTP to {host}...")
-          ftp = FTP()
-          ftp.connect(host, 21 if port == 22 or port == 2022 else port, timeout=20)
-          ftp.login(username, password)
-          print("FTP Login successful!")
+          try:
+              print(f"Connecting via FTP to {host}...")
+              ftp = FTP()
+              ftp.connect(host, 21 if port == 22 or port == 2022 else port, timeout=20)
+              ftp.login(username, password)
+              print("FTP Login successful!")
 
-          # The mod outputs to Pal/Binaries/Win64 (relative to server root / Pal folder)
-          target_path = "Binaries/Win64/Statistik_report.html"
-          
-          print(f"Downloading {target_path}...")
-          with open("index.html", "wb") as f:
-              ftp.retrbinary(f"RETR {target_path}", f.write)
+              # 1. Download HTML report
+              try:
+                  print("Downloading HTML report...")
+                  with open("index.html", "wb") as f:
+                      ftp.retrbinary("RETR Binaries/Win64/Statistik_report.html", f.write)
+                  print("Saved as index.html")
+              except Exception as e:
+                  print(f"Could not download HTML (server might be starting up): {e}")
 
-          ftp.quit()
-          print("Successfully downloaded and saved as index.html!")
+              # 2. Download JSON file
+              try:
+                  print("Downloading JSON file...")
+                  with open("Statistik_report.json", "wb") as f:
+                      ftp.retrbinary("RETR Binaries/Win64/Statistik_report.json", f.write)
+                  print("Saved as Statistik_report.json")
+              except Exception as e:
+                  print(f"Could not download JSON: {e}")
+
+              ftp.quit()
+          except Exception as e:
+              print(f"Server connection failed (Server is likely offline): {e}")
+              print("Skipping sync, keeping existing site files intact.")
           EOF
 
       - name: Add Auto-Refresh and Anti-Cache to HTML
         run: |
           python - << 'EOF'
-          with open("index.html", "r", encoding="utf-8", errors="ignore") as f:
-              content = f.read()
+          # Check if index.html exists before modifying (safeguard if server was completely offline)
+          if os.path.exists("index.html"):
+              with open("index.html", "r", encoding="utf-8", errors="ignore") as f:
+                  content = f.read()
+                  
+              meta_tags = """
+              <meta http-equiv="refresh" content="300">
+              <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+              <meta http-equiv="Pragma" content="no-cache">
+              <meta http-equiv="Expires" content="0">
+              </head>
+              """
               
-          meta_tags = """
-          <meta http-equiv="refresh" content="300">
-          <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
-          <meta http-equiv="Pragma" content="no-cache">
-          <meta http-equiv="Expires" content="0">
-          </head>
-          """
-          
-          if "</head>" in content:
-              content = content.replace("</head>", meta_tags)
+              if "</head>" in content:
+                  content = content.replace("</head>", meta_tags)
+              else:
+                  content = meta_tags + content
+                  
+              with open("index.html", "w", encoding="utf-8") as f:
+                  f.write(content)
+              print("Injected auto-refresh and anti-cache tags into index.html!")
           else:
-              content = meta_tags + content
-              
-          with open("index.html", "w", encoding="utf-8") as f:
-              f.write(content)
-          print("Injected auto-refresh and anti-cache tags into index.html!")
+              print("index.html not found, skipping tag injection.")
           EOF
 
       - name: Upload Pages artifact
