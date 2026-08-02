@@ -72,6 +72,8 @@ jobs:
       - name: Add Auto-Refresh and Anti-Cache to HTML
         run: |
           python - << 'EOF'
+          import os
+          
           # Check if index.html exists before modifying (safeguard if server was completely offline)
           if os.path.exists("index.html"):
               with open("index.html", "r", encoding="utf-8", errors="ignore") as f:
